@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you found this tutorial helpful, please consider citing it as below."
+authors:
+- family-names: "Donahue"
+  given-names: "Chris"
+- family-names: "Huang"
+  given-names: "Cheng-Zhi Anna"
+- family-names: "Gillick"
+  given-names: "Jon"
+title: "Interactive music co-creation with PyTorch and Tensorflow.js"
+date-released: 2021-11-07
+url: "https://github.com/chrisdonahue/music-cocreation-tutorial"

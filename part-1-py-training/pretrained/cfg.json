@@ -1,0 +1,17 @@
+{
+  "seed": 0,
+  "num_buttons": 8,
+  "data_delta_time_max": 1.0,
+  "data_augment_time_stretch_max": 0.05,
+  "data_augment_transpose_max": 6,
+  "model_enc": true,
+  "model_rnn_dim": 128,
+  "model_rnn_num_layers": 2,
+  "batch_size": 32,
+  "seq_len": 128,
+  "lr": 0.0003,
+  "loss_margin_multiplier": 1.0,
+  "loss_contour_multiplier": 1.0,
+  "summarize_frequency": 128,
+  "eval_frequency": 128
+}

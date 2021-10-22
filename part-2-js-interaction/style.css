@@ -1,0 +1,209 @@
+* {
+  box-sizing: border-box;
+}
+[hidden] {
+  display: none !important;
+}
+
+@font-face {
+  font-family: HK Grotesk;
+  src: url("https://cdn.glitch.me/605e2a51-d45f-4d87-a285-9410ad350515%2FHKGrotesk-Regular.otf?v=1603136326027")
+    format("opentype");
+}
+
+@font-face {
+  font-family: HK Grotesk;
+  font-weight: bold;
+  src: url("https://cdn.glitch.me/605e2a51-d45f-4d87-a285-9410ad350515%2FHKGrotesk-Bold.otf?v=1603136323437")
+    format("opentype");
+}
+
+body {
+  font-family: HK Grotesk;
+  background: #141E30;
+  background: linear-gradient(to bottom, #243B55, #141E30);
+  color: #FFFFFF;
+}
+
+.wrapper {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  margin: 0 1rem;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.title {
+  color: #FFFFFF;
+  font-family: HK Grotesk;
+  font-style: normal;
+  font-weight: bold;
+  font-size: 100px;
+  line-height: 105%;
+  margin: 0;
+  -webkit-text-stroke-width: 2px;
+  -webkit-text-stroke-color: white;
+}
+
+.rainbow-text {
+  background-image: linear-gradient(
+    to left,
+    #d500f9,
+    #651fff,
+    #2979ff,
+    #00e5ff,
+    #c6ff00,
+    #ffff00,
+    #ff9800,
+    #EE2B29
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.color-0 {
+  background: #EE2B29;
+  fill: #EE2B29;
+}
+
+.color-1 {
+  background: #ff9800;
+  fill: #ff9800;
+}
+
+.color-2 {
+  background: #ffff00;
+  fill: #ffff00;
+}
+
+.color-3 {
+  background: #c6ff00;
+  fill: #c6ff00;
+}
+
+.color-4 {
+  background: #00e5ff;
+  fill: #00e5ff;
+}
+
+.color-5 {
+  background: #2979ff;
+  fill: #2979ff;
+}
+
+.color-6 {
+  background: #651fff;
+  fill: #651fff;
+}
+
+.color-7 {
+  background: #d500f9;
+  fill: #d500f9;
+}
+
+.controls {
+  display: flex;
+  /*   position: absolute; */
+  width: 90vw;
+  /*   left: 50%; */
+  /*   transform: translateX(-50%); */
+  bottom: 20px;
+  height: 100px;
+  z-index: 2;
+}
+
+.controls button {
+  border: none;
+  box-shadow: none;
+  margin: 0;
+  padding: 0;
+  flex-grow: 1;
+  height: 100%;
+  width: 100%;
+  transition: transform 0.2s linear;
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: bold;
+  -webkit-user-select: none; /* Safari 3.1+ */
+  -moz-user-select: none; /* Firefox 2+ */
+  -ms-user-select: none; /* IE 10+ */
+  user-select: none; /* Standard syntax */
+  line-height: 1;
+}
+
+.controls button[active] {
+  transform: scale(0.9, 0.9);
+}
+
+.controls button.settings {
+  position: relative;
+  background: transparent;
+  fill: white;
+  cursor: pointer;
+}
+
+.controls button.settings:hover {
+  fill: #CDF352;
+}
+
+.controls button span {
+  pointer-events: none;
+}
+
+h2 {
+  color: #FFFFFF;
+}
+
+.instructions {
+  margin: 1rem auto 0;
+}
+
+/* https://projects.lukehaas.me/css-loaders/ */
+
+.loader,
+.loader:after {
+  border-radius: 50%;
+  width: 10em;
+  height: 10em;
+}
+.loader {
+  margin: 60px auto;
+  font-size: 10px;
+  position: relative;
+  text-indent: -9999em;
+  border-top: 1.1em solid rgba(255, 255, 255, 0.2);
+  border-right: 1.1em solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1.1em solid rgba(255, 255, 255, 0.2);
+  border-left: 1.1em solid #ffffff;
+  -webkit-transform: translateZ(0);
+  -ms-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-animation: load8 1.1s infinite linear;
+  animation: load8 1.1s infinite linear;
+}
+@-webkit-keyframes load8 {
+  0% {
+    -webkit-transform: rotate(0deg);
+    transform: rotate(0deg);
+  }
+  100% {
+    -webkit-transform: rotate(360deg);
+    transform: rotate(360deg);
+  }
+}
+@keyframes load8 {
+  0% {
+    -webkit-transform: rotate(0deg);
+    transform: rotate(0deg);
+  }
+  100% {
+    -webkit-transform: rotate(360deg);
+    transform: rotate(360deg);
+  }
+}
