@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Music Co-creation Tutorial Part 2 (Interaction)</title>
+
+    <link
+      id="favicon"
+      rel="icon"
+      href="https://chrisdonahue.com/music-cocreation-tutorial/assets/favicon-32x32.png"
+      type="image/x-icon"
+    />
+    <link rel="stylesheet" href="style.css" />
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.9.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tone@14.7.77/build/Tone.min.js"></script>
+
+    <script src="model.js"></script>
+    <script src="script.js"></script>
+  </head>
+  <body>
+    <div class="wrapper">
+      <div class="content" role="main">
+        <h1 class="title">Piano <span class="rainbow-text">Genie</span></h1>
+
+        <div class="instructions">
+          <div id="loading">
+            <div class="loader">Loading...</div>
+          </div>
+          <div id="loaded" style="display: none;">
+            <p>
+              Sound on 🔊! To play Piano Genie, use the 1️⃣-8️⃣ numbered keys on
+              your keyboard or press the buttons below. See your developer
+              console for latency information.
+            </p>
+
+            <div class="controls" id="controls">
+              <button class="color color-0" id="btn0" data-id="0">
+                <span>1</span>
+              </button>
+              <button class="color color-1" id="btn1" data-id="1">
+                <span>2</span>
+              </button>
+              <button class="color color-2" id="btn2" data-id="2">
+                <span>3</span>
+              </button>
+              <button class="color color-3" id="btn3" data-id="3">
+                <span>4</span>
+              </button>
+              <button class="color color-4" id="btn4" data-id="4">
+                <span>5</span>
+              </button>
+              <button class="color color-5" id="btn5" data-id="5">
+                <span>6</span>
+              </button>
+              <button class="color color-6" id="btn6" data-id="6">
+                <span>7</span>
+              </button>
+              <button class="color color-7" id="btn7" data-id="7">
+                <span>8</span>
+              </button>
+            </div>
+          </div>
+
+          <h2>
+            About
+          </h2>
+          <p>
+            This is a barebones demo of
+            <a href="https://magenta.tensorflow.org/pianogenie" target="_blank"
+              ><i>Piano Genie</i></a
+            >
+            prepared by
+            <a href="https://chrisdonahue.com" target="_blank">Chris Donahue</a>
+            for the ISMIR 2021 tutorial
+            <i>Designing Generative Models for Interactive Co-creation</i>. It
+            is the second part of a two-part tutorial on training a model in
+            Python and porting it to Javascript for interaction (see
+            <a
+              href="https://colab.research.google.com/drive/124pk1yehPx1y-K3hBG6-SoUSVqQ-RWnM?usp=sharing"
+              target="_blank"
+              >this Colab Notebook</a
+            >
+            for part one). All code for this tutorial is available via our
+            <a
+              href="https://github.com/chrisdonahue/music-cocreation-tutorial"
+              target="_blank"
+              >GitHub repository</a
+            >.
+          </p>
+          <p>
+            This demo is aimed at developers and optimized for simplicity—please
+            see the
+            <a href="https://piano-genie.glitch.me/" target="_blank"
+              >official demo</a
+            >
+            by
+            <a href="https://meowni.ca/" target="_blank">Monica Dinculescu</a>
+            for a user-friendly experience. For more about Piano Genie, please
+            also see the original
+            <a href="https://magenta.tensorflow.org/pianogenie" target="_blank"
+              >blog post</a
+            >,
+            <a href="https://arxiv.org/abs/1810.05246" target="_blank"
+              >IUI 2019 paper</a
+            >, and
+            <a
+              href="https://github.com/magenta/magenta/tree/main/magenta/models/piano_genie"
+              target="_blank"
+              >codebase</a
+            >.
+          </p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
