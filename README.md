@@ -1,4 +1,6 @@
-## Interactive music co-creation with PyTorch and Tensorflow.js
+## Interactive music co-creation with PyTorch and TensorFlow.js
+
+**NOTE:** This tutorial is in-progress but will be finalized by November 7th, 2021
 
 This tutorial is a start-to-finish demonstration ([click here for result](https://chrisdonahue.com/music-cocreation-tutorial)) of building an interactive music co-creation system in two steps:
 
