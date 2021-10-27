@@ -37,8 +37,7 @@ window.my = window.my || {};
       heldButtonToMidiPitch.set(button, midiPitch);
 
       // I/O report in console
-      let dt =
-        lastTimeMs === null ? my.DELTA_TIME_MAX : (timeMs - lastTimeMs) / 1000;
+      let dt = lastTimeMs === null ? 0 : (timeMs - lastTimeMs) / 1000;
       dt = dt.toFixed(3);
       const latencyMs = new Date().getTime() - timeMs;
       console.log(

@@ -26,30 +26,14 @@ window.my = window.my || {};
   }
 
   class LSTMHiddenState {
-    constructor(batchSize, numLayers, dim, c, h) {
-      this.batchSize = batchSize;
-      this._numLayers = numLayers;
-      this._dim = dim;
-
-      if (c === undefined) {
-        c = [];
-        for (let i = 0; i < this._numLayers; ++i) {
-          c.push(tf.zeros([this.batchSize, this._dim], "float32"));
-        }
-      }
+    constructor(c, h) {
+      if (c.length !== h.length) throw "Invalid shapes";
       this.c = c;
-
-      if (h === undefined) {
-        h = [];
-        for (let i = 0; i < this._numLayers; ++i) {
-          h.push(tf.zeros([this.batchSize, this._dim], "float32"));
-        }
-      }
       this.h = h;
     }
 
     dispose() {
-      for (let i = 0; i < this._numLayers; ++i) {
+      for (let i = 0; i < this.c.length; ++i) {
         this.c[i].dispose();
         this.h[i].dispose();
       }
@@ -120,18 +104,24 @@ window.my = window.my || {};
     }
 
     async init(paramsDir) {
-      paramsDir = paramsDir === undefined ? DEFAULT_CKPT_DIR : paramsDir;
-      await super.init(paramsDir);
+      await super.init(paramsDir === undefined ? DEFAULT_CKPT_DIR : paramsDir);
     }
 
     initHidden(batchSize) {
       // NOTE: This allocates memory that must later be freed
-      return new LSTMHiddenState(batchSize, this.rnnNumLayers, this.rnnDim);
+      const c = [];
+      for (let i = 0; i < this.rnnNumLayers; ++i) {
+        c.push(tf.zeros([batchSize, this.rnnDim], "float32"));
+      }
+      const h = [];
+      for (let i = 0; i < this.rnnNumLayers; ++i) {
+        h.push(tf.zeros([batchSize, this.rnnDim], "float32"));
+      }
+      return new LSTMHiddenState(c, h);
     }
 
     forward(kim1, ti, bi, him1) {
       // NOTE: JavaScript API takes in one timestep per call, i.e., [B] rather than [B, S] as in Python
-      const batchSize = kim1.shape[0];
 
       // Encode input
       const inputs = [
@@ -161,15 +151,12 @@ window.my = window.my || {};
       }
 
       // Run RNN
-      const [cUpdated, hUpdated] = tf.multiRNNCell(cells, x, him1.c, him1.h);
-      x = hUpdated[this.rnnNumLayers - 1];
-      const hi = new LSTMHiddenState(
-        batchSize,
-        this.rnnNumLayers,
-        this.rnnDim,
-        cUpdated,
-        hUpdated
-      );
+      if (him1 === undefined || him1 === null) {
+        him1 = this.initHidden(kim1.shape[0]);
+      }
+      const [hic, hih] = tf.multiRNNCell(cells, x, him1.c, him1.h);
+      x = hih[this.rnnNumLayers - 1];
+      const hi = new LSTMHiddenState(hic, hih);
 
       // Compute logits
       const hatki = tf.add(
@@ -181,10 +168,12 @@ window.my = window.my || {};
     }
   }
 
+  const NUM_BUTTONS = 8;
+
   class IntegerQuantizer extends Module {
     constructor(numBins) {
       super();
-      this.numBins = numBins;
+      this.numBins = numBins === undefined ? NUM_BUTTONS : numBins;
     }
 
     discreteToReal(x) {
@@ -211,9 +200,9 @@ window.my = window.my || {};
 
     // Run test
     let totalErr = 0;
-    tf.tidy(() => {
-      let him1 = decoder.initHidden(1);
-      for (let i = 0; i < 128; ++i) {
+    let him1 = null;
+    for (let i = 0; i < 128; ++i) {
+      him1 = tf.tidy(() => {
         const kim1 = tf.tensor(f["input_keys"][i], [1], "int32");
         const ti = tf.tensor(f["input_dts"][i], [1], "float32");
         let bi = tf.tensor(f["input_buttons"][i], [1], "float32");
@@ -228,18 +217,19 @@ window.my = window.my || {};
         const err = tf.sum(tf.abs(tf.sub(khati, expectedLogits))).arraySync();
         totalErr += err;
 
-        him1.dispose();
-        him1 = hi;
-      }
-    });
+        if (him1 !== null) him1.dispose();
+        return hi;
+      });
+    }
 
     // Check equivalence to fixtures
-    if (totalErr > 0.015) {
+    if (isNaN(totalErr) || totalErr > 0.015) {
       console.log(totalErr);
       throw "Failed test";
     }
 
     // Check for memory leaks
+    him1.dispose();
     decoder.dispose();
     if (tf.memory().numBytes !== numBytesBefore) {
       throw "Memory leak";
@@ -250,6 +240,7 @@ window.my = window.my || {};
   }
 
   my.PIANO_NUM_KEYS = PIANO_NUM_KEYS;
+  my.NUM_BUTTONS = NUM_BUTTONS;
   my.PianoGenieDecoder = PianoGenieDecoder;
   my.IntegerQuantizer = IntegerQuantizer;
   my.testPianoGenieDecoder = testPianoGenieDecoder;

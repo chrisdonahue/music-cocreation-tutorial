@@ -1,5 +1,4 @@
 (function(tf, my) {
-  const NUM_BUTTONS = 8;
   const DELTA_TIME_MAX = 1;
   const SOS = my.PIANO_NUM_KEYS;
   const DEFAULT_TEMPERATURE = 0.25;
@@ -29,7 +28,7 @@
     constructor() {
       // Model
       this.dec = new my.PianoGenieDecoder();
-      this.quant = new my.IntegerQuantizer(NUM_BUTTONS);
+      this.quant = new my.IntegerQuantizer();
 
       // Performance state
       this.lastTime = null;
@@ -52,7 +51,7 @@
       }
       this.lastTime = null;
       this.lastKey = SOS;
-      this.lastHidden = this.dec.initHidden(1);
+      this.lastHidden = null;
     }
 
     dispose() {
@@ -74,7 +73,7 @@
       if (deltaTime > DELTA_TIME_MAX) {
         deltaTime = DELTA_TIME_MAX;
       }
-      if (button < 0 || button >= NUM_BUTTONS) {
+      if (button < 0 || button >= my.NUM_BUTTONS) {
         throw "Specified button is out of range";
       }
 
@@ -93,14 +92,13 @@
       // Update state
       this.lastTime = time;
       this.lastKey = key;
-      this.lastHidden.dispose();
+      if (this.lastHidden !== null) this.lastHidden.dispose();
       this.lastHidden = hidden;
 
       return key;
     }
   }
 
-  my.NUM_BUTTONS = NUM_BUTTONS;
   my.DELTA_TIME_MAX = DELTA_TIME_MAX;
   my.PianoGenie = PianoGenie;
 })(window.tf, window.my);
