@@ -4,10 +4,10 @@
 
 This tutorial is a start-to-finish demonstration ([click here for result](https://chrisdonahue.com/music-cocreation-tutorial)) of building an interactive music co-creation system in two parts:
 
-1. <a href="https://colab.research.google.com/drive/124pk1yehPx1y-K3hBG6-SoUSVqQ-RWnM?usp=sharing" target="_blank"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a> **Training a generative model of music in Python (via PyTorch)**
-2. <a href="https://glitch.com/edit/#!/music-cocreation-tutorial" target="_blank"><img src="https://cdn.glitch.com/2703baf2-b643-4da7-ab91-7ee2a2d00b5b%2Fremix-button.svg" alt="Remix on Glitch"/></a>**Deploying it in JavaScript (via TensorFlow.js)**
+1. **Training a generative model of music in Python (via PyTorch)**
+2. **Deploying it in JavaScript (via TensorFlow.js)**
 
-This demonstration was prepared by [Chris Donahue](https://chrisdonahue.com) as part of an [ISMIR 2021 tutorial](https://ismir2021.ismir.net/tutorials/) on *Designing generative models for interactive co-creation*, co-hosted by [Anna Huang](https://research.google/people/105787/) and [Jon Gillick](https://www.jongillick.com/).
+This demonstration was prepared by [Chris Donahue](https://chrisdonahue.com) as part of an [ISMIR 2021 tutorial](https://ismir2021.ismir.net/tutorials/) on *Designing generative models for interactive co-creation*, co-organized by [Anna Huang](https://research.google/people/105787/) and [Jon Gillick](https://www.jongillick.com).
 
 The example generative model we will train and deploy is [Piano Genie](https://magenta.tensorflow.org/pianogenie) (Donahue et al. 2019). Piano Genie allows anyone to improvise on the piano by mapping performances on a miniature 8-button keyboard to realistic performances on a full 88-key piano in real time. At a low-level, it is an LSTM that operates on symbolic music data (i.e., MIDI), and is lightweight enough for real-time performance on mobile CPUs.
 
@@ -35,7 +35,7 @@ This part of the tutorial involves porting the Piano Genie decoder to TensorFlow
 
 #### Licensing info
 
-This tutorial uses the [MAESTRO dataset](https://magenta.tensorflow.org/datasets/maestro) (Hawthorne et al. 2018), which is distributed under a [CC BY-NC-SA 4.0 license](https://creativecommons.org/licenses/by-nc-sa/4.0/). Because of the ShareAlike clause, the material in this tutorial is also be distributed under that same license.
+This tutorial uses the [MAESTRO dataset](https://magenta.tensorflow.org/datasets/maestro) (Hawthorne et al. 2018), which is distributed under a [CC BY-NC-SA 4.0 license](https://creativecommons.org/licenses/by-nc-sa/4.0/). Because of the ShareAlike clause, the material in this tutorial is also distributed under that same license.
 
 #### Acknowledgements
 
