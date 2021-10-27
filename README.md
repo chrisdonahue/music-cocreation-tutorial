@@ -15,9 +15,7 @@ The example generative model we will train and deploy is [Piano Genie](https://m
 
 <a href="https://colab.research.google.com/drive/124pk1yehPx1y-K3hBG6-SoUSVqQ-RWnM?usp=sharing" target="_blank"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
 
-This part of the tutorial involves training a music generative model (Piano Genie) from scratch in PyTorch, which comes in the form of a self-contained [Google Colab notebook](https://colab.research.google.com/drive/124pk1yehPx1y-K3hBG6-SoUSVqQ-RWnM?usp=sharing). The instructions for this part are embedded in the Colab, and the model takes about an hour to train on Colab's free GPUs.
-
-The outputs of this part are: (1) a [model checkpoint](part-2-js-interaction/pretrained), and (2) [serialized inputs and outputs for a test case](part-2-js-interaction/test/fixtures.json), which we will use to check correctness of our JavaScript port in the next part.
+This part of the tutorial involves training a music generative model (Piano Genie) from scratch in PyTorch, which comes in the form of a self-contained [Google Colab notebook](https://colab.research.google.com/drive/124pk1yehPx1y-K3hBG6-SoUSVqQ-RWnM?usp=sharing). The instructions for this part are embedded in the Colab, and the model takes about an hour to train on Colab's free GPUs. The outputs of this part are: (1) a [model checkpoint](part-2-js-interaction/pretrained), and (2) [serialized inputs and outputs for a test case](part-2-js-interaction/test/fixtures.json), which we will use to check correctness of our JavaScript port in the next part.
 
 ### Part 2: Deploying in JavaScript
 
@@ -55,7 +53,17 @@ This will produce `output/group1-shard1of1.bin`, a binary file containing the pa
 
 Next, we will write equivalent TensorFlow.js code to reimplement our PyTorch model. This is tricky, and will likely require unit testing (I have done this several times and have yet to get it right on the first try).
 
-One tip is to try to make the APIs for the Python and JavaScript models as similar as possible. Here is the PyTorch model we are trying to port (see the Colab notebook to understand variable naming conventions in the `forward` method):
+One tip is to try to make the APIs for the Python and JavaScript models as similar as possible. Here is a side-by-side comparison between the reference PyTorch model (from the [Colab notebook](part-1-py-training/Train.colab.ipynb)) and the TensorFlow.js equivalent (from [`part-2-js-interaction/modules.js`](part2-js-interaction/modules.js)):
+
+<table>
+    
+<tr>
+<th>PyTorch model</th>
+<th>TensorFlow.js equivalent</th>
+</tr>
+    
+<tr>
+<td>
 
 ```py
 class PianoGenieDecoder(nn.Module):
@@ -111,9 +119,10 @@ class PianoGenieDecoder(nn.Module):
 
         return hat_k, h_N
 ```
-
-And here is the equivalent model re-writen in TensorFlow.js (from [`part-2-js-interaction/modules.js`](part-2-js-interaction/modules.js)). These models have similar APIs, but note that the PyTorch model takes as input entire sequences, i.e., tensors of shape `[batch_size, seq_len]`, while the TensorFlow.js model takes an individual timestep as input, i.e., tensors of shape `[batch_size]`. This is because in Python, we are passing as input full sequences of training data, while in JavaScript, we will be using the model in an on-demand fashion, passing in user inputs as they become available.
-
+    
+</td>
+<td>
+    
 ```js
 class PianoGenieDecoder extends Module {
   constructor(rnnDim, rnnNumLayers) {
@@ -181,9 +190,79 @@ class PianoGenieDecoder extends Module {
 }
 ```
 
+</td>
+</tr>
+</table>
+
+While these models have similar APIs, note that the PyTorch model takes as input entire sequences, i.e., tensors of shape `[batch_size, seq_len]`, while the TensorFlow.js equivalent takes an individual timestep as input, i.e., tensors of shape `[batch_size]`. This is because in Python, we are passing as input full sequences of training data, while in JavaScript, we will be using the model in an on-demand fashion, passing in user inputs as they become available.
+
+Note that this implementation makes use of several helpers, such as a `Module` class which mocks behavior in `torch.nn.Module`, and a factory method `pyTorchLSTMCellFactory` which handles subtle differences in the LSTM implementations between PyTorch and TensorFlow.js. See [`part-2-js-interaction/modules.js`](part-2-js-interaction/modules.js) for more details.
+
 #### Testing for correctness
 
+Now that we have our model redefined in JavaScript, it is critical that we test it to ensure the behavior is identical to that of the original Python version. The easiest way to do this is to serialize a batch of inputs to and outputs from your Python model as JSON. Then, you can run those inputs through your JavaScript model and check if the outputs are identical (modulo some inevitable numerical error). Such a test case might look like this (from [`part-2-js-interaction/modules.js`](part-2-js-interaction/modules.js)):
+
+```js
+async function testPianoGenieDecoder() {
+  const numBytesBefore = tf.memory().numBytes;
+
+  // Create model
+  const quantizer = new IntegerQuantizer();
+  const decoder = new PianoGenieDecoder();
+  await decoder.init();
+
+  // Fetch test fixtures
+  const f = await fetch(TEST_FIXTURES_URI).then(r => r.json());
+
+  // Run test
+  let totalErr = 0;
+  let him1 = null;
+  for (let i = 0; i < 128; ++i) {
+    him1 = tf.tidy(() => {
+      const kim1 = tf.tensor(f["input_keys"][i], [1], "int32");
+      const ti = tf.tensor(f["input_dts"][i], [1], "float32");
+      let bi = tf.tensor(f["input_buttons"][i], [1], "float32");
+      bi = quantizer.discreteToReal(bi);
+      const [khati, hi] = decoder.forward(kim1, ti, bi, him1);
+
+      const expectedLogits = tf.tensor(
+        f["output_logits"][i],
+        [1, 88],
+        "float32"
+      );
+      const err = tf.sum(tf.abs(tf.sub(khati, expectedLogits))).arraySync();
+      totalErr += err;
+
+      if (him1 !== null) him1.dispose();
+      return hi;
+    });
+  }
+
+  // Check equivalence to fixtures
+  if (isNaN(totalErr) || totalErr > 0.015) {
+    console.log(totalErr);
+    throw "Failed test";
+  }
+
+  // Check for memory leaks
+  him1.dispose();
+  decoder.dispose();
+  if (tf.memory().numBytes !== numBytesBefore) {
+    throw "Memory leak";
+  }
+  quantizer.dispose();
+
+  console.log("Passed test");
+}
+```
+
+Note that this function makes use of the [`tf.tidy`](https://js.tensorflow.org/api/latest/#tidy) wrapper. TensorFlow.js is [unable to automatically manage memory](https://www.tensorflow.org/js/guide/tensors_operations#memory) when running on GPUs via WebGL, so best practices for writing TensorFlow.js code involve some amount of manual memory management. The `tf.tidy` wrapper makes this easy—any tensor that is allocated during (but not returned by) the wrapped function will be automatically freed when the wrapped function finishes. However, in this case we have two sets of tensors that must persist across model calls: the model's parameters and the RNN memory. Unfortunately, we will have to carefully and manually dispose of these to prevent memory leaks.
+
 #### Hooking model up to simple UI
+
+Now that we have ported and tested our model, we can finally have some fun and start building out the interactive elements! Our demo includes a [simple HTML UI](part-2-js-interaction/index.html) with 8 buttons, and a [script](part-2-js-interaction/script.js) which hooks the frontend up to the model. Our script makes use of the wonderful [Tone.js](https://tonejs.github.io/) library to quickly build out a polyphonic FM synthesizer. We also [build a higher-level API](part-2-js-interaction/piano-genie.js) around our low-level model port, to handle things like keeping track of state and sampling from a model's distribution. 
+
+While this is the stopping point of the tutorial, I would encourage you to experiment further. You're now at the point where the benefits of porting the model to JavaScript are clear: JavaScript makes it fairly straightforward to add additional functionality to enrich the interaction. For example, you could add an piano keyboard display to visualize Piano Genie's outputs, or bind the space bar to act as a sustain pedal to Piano Genie, or you could use the WebMIDI API to output notes to a hardware synthesizer (hint: all of this functionality is built into [Monica Dinculescu's](https://meowni.ca/) official [Piano Genie demo](https://www.w3.org/TR/webmidi/)). The possibilities are endless!
 
 ### End matter
 
