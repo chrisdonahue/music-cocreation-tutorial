@@ -2,13 +2,12 @@ window.my = window.my || {};
 
 (function(tone, my) {
   const RUN_TEST = false;
-  const NUM_BUTTONS = 8;
-  const LOWEST_PIANO_KEY_MIDI_NOTE = 21;
+  const LOWEST_PIANO_KEY_MIDI_PITCH = 21;
 
   async function init() {
     // (Optional) Run test case
     if (RUN_TEST) {
-      await my.testPianoGenie();
+      await my.testPianoGenieDecoder();
     }
 
     // Initialize Piano Genie
@@ -19,13 +18,13 @@ window.my = window.my || {};
     const buttonEls = document.getElementsByTagName("button");
 
     // Initialize synthesizer state
-    let lastTimeMs = new Date().getTime();
-    const heldButtonToMidiNote = new Map();
+    const heldButtonToMidiPitch = new Map();
     const synth = new tone.PolySynth(tone.FMSynth).toDestination();
 
     // Callback for note onset
+    let lastTimeMs = null;
     function noteOnset(button) {
-      if (heldButtonToMidiNote.has(button)) return;
+      if (heldButtonToMidiPitch.has(button)) return;
 
       // Run Piano Genie
       const timeMs = new Date().getTime();
@@ -33,33 +32,35 @@ window.my = window.my || {};
 
       // Play note out of synthesizer
       if (tone.context.state !== "running") tone.context.resume();
-      const midiPitch = key + LOWEST_PIANO_KEY_MIDI_NOTE;
+      const midiPitch = key + LOWEST_PIANO_KEY_MIDI_PITCH;
       synth.triggerAttack(tone.Frequency(midiPitch, "midi").toFrequency());
-      heldButtonToMidiNote.set(button, midiPitch);
-
-      // Show UI
-      buttonEls[button].setAttribute("active", true);
+      heldButtonToMidiPitch.set(button, midiPitch);
 
       // I/O report in console
-      const dt = ((timeMs - lastTimeMs) / 1000).toFixed(3);
+      let dt =
+        lastTimeMs === null ? my.DELTA_TIME_MAX : (timeMs - lastTimeMs) / 1000;
+      dt = dt.toFixed(3);
       const latencyMs = new Date().getTime() - timeMs;
       console.log(
         `⌚ ${dt}, 🔘 ${button} -> 🎹🧞 -> 🎵 ${midiPitch} (in ${latencyMs}ms)`
       );
       lastTimeMs = timeMs;
+
+      // Show UI
+      buttonEls[button].setAttribute("active", true);
     }
 
     // Callback for note offset
     function noteOffset(button) {
-      if (!heldButtonToMidiNote.has(button)) return;
-      const midiPitch = heldButtonToMidiNote.get(button);
+      if (!heldButtonToMidiPitch.has(button)) return;
+      const midiPitch = heldButtonToMidiPitch.get(button);
       synth.triggerRelease(tone.Frequency(midiPitch, "midi").toFrequency());
-      heldButtonToMidiNote.delete(button);
+      heldButtonToMidiPitch.delete(button);
       buttonEls[button].removeAttribute("active");
     }
 
     // Bind touch control
-    for (let b = 0; b < NUM_BUTTONS; ++b) {
+    for (let b = 0; b < my.NUM_BUTTONS; ++b) {
       const buttonEl = buttonEls[b];
       const doOnset = evt => {
         noteOnset(b);
@@ -81,11 +82,11 @@ window.my = window.my || {};
     // Bind keyboard control
     document.onkeydown = evt => {
       const button = evt.keyCode - 49;
-      if (button >= 0 && button < NUM_BUTTONS) noteOnset(button);
+      if (button >= 0 && button < my.NUM_BUTTONS) noteOnset(button);
     };
     document.onkeyup = evt => {
       const button = evt.keyCode - 49;
-      if (button >= 0 && button < NUM_BUTTONS) noteOffset(button);
+      if (button >= 0 && button < my.NUM_BUTTONS) noteOffset(button);
     };
 
     // Show UI

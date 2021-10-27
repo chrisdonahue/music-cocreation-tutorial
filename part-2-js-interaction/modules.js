@@ -84,151 +84,61 @@ window.my = window.my || {};
     };
   }
 
-  function sampleFromLogits(logits, temperature, seed) {
-    temperature = temperature !== undefined ? temperature : 1;
-    if (temperature < 0 || temperature > 1) {
-      throw "Specified invalid temperature";
-    }
-
-    let result;
-    if (temperature === 0) {
-      result = tf.argMax(logits, 0);
-    } else {
-      if (temperature < 1) {
-        logits = tf.div(logits, tf.scalar(temperature, "float32"));
-      }
-      const scores = tf.reshape(tf.softmax(logits, 0), [1, -1]);
-      const sample = tf.multinomial(scores, 1, seed, true);
-      result = tf.reshape(sample, []);
-    }
-
-    return result;
-  }
-
-  const DEFAULT_CKPT_DIR =
-    "https://chrisdonahue.com/music-cocreation-tutorial/pretrained";
-  const DEFAULT_TEMPERATURE = 0.25;
-  const PIANO_NUM_KEYS = 88;
-
-  class PianoGenie {
-    constructor(numButtons, deltaTimeMax, rnnNumLayers, rnnDim) {
+  class Module {
+    constructor() {
       this._params = null;
-
-      // Model config
-      this.numButtons = numButtons === undefined ? 8 : numButtons;
-      this.deltaTimeMax = deltaTimeMax === undefined ? 1 : deltaTimeMax;
-      this.rnnNumLayers = rnnNumLayers === undefined ? 2 : rnnNumLayers;
-      this.rnnDim = rnnDim === undefined ? 128 : rnnDim;
-
-      // Performance state
-      this.time = null;
-      this.lastKey = null;
-      this.hidden = null;
-    }
-
-    reset() {
-      if (this.hidden !== null) {
-        this.hidden.dispose();
-      }
-      this.time = null;
-      this.lastKey = PIANO_NUM_KEYS;
-      this.hidden = this.initHidden(1);
     }
 
     async init(paramsDir) {
       this.dispose();
-
-      // Load params
-      paramsDir = paramsDir === undefined ? DEFAULT_CKPT_DIR : paramsDir;
       const manifest = await fetch(`${paramsDir}/weights_manifest.json`);
       const manifestJson = await manifest.json();
       this._params = await tf.io.loadWeights(manifestJson, paramsDir);
-
-      // Warm start
-      this.reset();
-      this.press(0, 0);
-      this.reset();
     }
 
     dispose() {
-      // Dispose params
       if (this._params !== null) {
         for (const n in this._params) {
           this._params[n].dispose();
         }
         this._params = null;
       }
+    }
+  }
 
-      // Dispose hidden state
-      if (this.hidden !== null) {
-        this.hidden.dispose();
-      }
+  const DEFAULT_CKPT_DIR =
+    "https://chrisdonahue.com/music-cocreation-tutorial/pretrained";
+  const PIANO_NUM_KEYS = 88;
+
+  class PianoGenieDecoder extends Module {
+    constructor(rnnDim, rnnNumLayers) {
+      super();
+      this.rnnDim = rnnDim === undefined ? 128 : rnnDim;
+      this.rnnNumLayers = rnnNumLayers === undefined ? 2 : rnnNumLayers;
     }
 
-    press(time, button, temperature) {
-      if (this._params === null) {
-        throw "Call initialize first";
-      }
-
-      // Check inputs
-      temperature =
-        temperature === undefined ? DEFAULT_TEMPERATURE : temperature;
-      const deltaTime = this.time === null ? 1e6 : time - this.time;
-      if (deltaTime < 0) {
-        console.log("Warning: Specified time is in the past");
-        deltaTime = 0;
-      }
-      if (button < 0 || button >= this.numButtons) {
-        throw "Specified button is out of range";
-      }
-
-      // Run model
-      const [key, h] = tf.tidy(() => {
-        const [logits, h] = this.forward(
-          tf.tensor(this.lastKey, [1], "int32"),
-          tf.tensor(deltaTime, [1], "float32"),
-          tf.tensor(button, [1], "int32"),
-          this.hidden
-        );
-        const key = sampleFromLogits(
-          tf.squeeze(logits),
-          temperature
-        ).dataSync()[0];
-        return [key, h];
-      });
-
-      // Update state
-      this.time = time;
-      this.lastKey = key;
-      this.hidden.dispose();
-      this.hidden = h;
-
-      return key;
+    async init(paramsDir) {
+      paramsDir = paramsDir === undefined ? DEFAULT_CKPT_DIR : paramsDir;
+      await super.init(paramsDir);
     }
 
     initHidden(batchSize) {
+      // NOTE: This allocates memory that must later be freed
       return new LSTMHiddenState(batchSize, this.rnnNumLayers, this.rnnDim);
     }
 
-    forward(lastKey, deltaTime, button, h) {
-      const batchSize = deltaTime.shape[0];
+    forward(kim1, ti, bi, him1) {
+      const batchSize = kim1.shape[0];
 
-      // Encode inputs
-      deltaTime = tf.minimum(deltaTime, this.deltaTimeMax);
-      button = tf.sub(
-        tf.mul(tf.div(tf.cast(button, "float32"), this.numButtons - 1), 2),
-        1
-      );
-      let x = tf.concat(
-        [
-          tf.oneHot(lastKey, PIANO_NUM_KEYS + 1),
-          tf.expandDims(deltaTime, 1),
-          tf.expandDims(button, 1)
-        ],
-        1
-      );
+      // Encode input
+      const inputs = [
+        tf.oneHot(kim1, PIANO_NUM_KEYS + 1),
+        tf.expandDims(ti, 1),
+        tf.expandDims(bi, 1)
+      ];
+      let x = tf.concat(inputs, 1);
 
-      // Project inputs
+      // Project encoded inputs
       x = tf.add(
         tf.matMul(x, this._params["dec.input.weight"], false, true),
         this._params[`dec.input.bias`]
@@ -248,9 +158,9 @@ window.my = window.my || {};
       }
 
       // Run RNN
-      const [cUpdated, hUpdated] = tf.multiRNNCell(cells, x, h.c, h.h);
+      const [cUpdated, hUpdated] = tf.multiRNNCell(cells, x, him1.c, him1.h);
       x = hUpdated[this.rnnNumLayers - 1];
-      h = new LSTMHiddenState(
+      const hi = new LSTMHiddenState(
         batchSize,
         this.rnnNumLayers,
         this.rnnDim,
@@ -259,46 +169,64 @@ window.my = window.my || {};
       );
 
       // Compute logits
-      x = tf.add(
+      const hatki = tf.add(
         tf.matMul(x, this._params["dec.output.weight"], false, true),
         this._params[`dec.output.bias`]
       );
 
-      return [x, h];
+      return [hatki, hi];
     }
   }
 
-  const TEXT_FIXTURES_URI =
+  class IntegerQuantizer extends Module {
+    constructor(numBins) {
+      super();
+      this.numBins = numBins;
+    }
+
+    discreteToReal(x) {
+      x = tf.cast(x, "float32");
+      x = tf.div(x, this.numBins - 1);
+      x = tf.sub(tf.mul(x, 2), 1);
+      return x;
+    }
+  }
+
+  const TEST_FIXTURES_URI =
     "https://chrisdonahue.com/music-cocreation-tutorial/test/fixtures.json";
 
-  async function testPianoGenie() {
+  async function testPianoGenieDecoder() {
     const numBytesBefore = tf.memory().numBytes;
 
     // Create model
-    const pianoGenie = new PianoGenie();
-    await pianoGenie.init();
+    const quantizer = new IntegerQuantizer();
+    const decoder = new PianoGenieDecoder();
+    await decoder.init();
 
     // Fetch test fixtures
-    const f = await fetch(TEXT_FIXTURES_URI).then(r => r.json());
+    const f = await fetch(TEST_FIXTURES_URI).then(r => r.json());
 
     // Run test
     let totalErr = 0;
     tf.tidy(() => {
-      let logits;
-      let h = pianoGenie.initHidden(1);
+      let him1 = decoder.initHidden(1);
       for (let i = 0; i < 128; ++i) {
-        const dt = tf.tensor(f["input_dts"][i], [1], "float32");
-        const key = tf.tensor(f["input_keys"][i], [1], "int32");
-        const button = tf.tensor(f["input_buttons"][i], [1], "float32");
-        [logits, h] = pianoGenie.forward(key, dt, button, h);
+        const kim1 = tf.tensor(f["input_keys"][i], [1], "int32");
+        const ti = tf.tensor(f["input_dts"][i], [1], "float32");
+        let bi = tf.tensor(f["input_buttons"][i], [1], "float32");
+        bi = quantizer.discreteToReal(bi);
+        const [khati, hi] = decoder.forward(kim1, ti, bi, him1);
 
         const expectedLogits = tf.tensor(
           f["output_logits"][i],
           [1, 88],
           "float32"
         );
-        const err = tf.sum(tf.abs(tf.sub(logits, expectedLogits))).arraySync();
+        const err = tf.sum(tf.abs(tf.sub(khati, expectedLogits))).arraySync();
         totalErr += err;
+
+        him1.dispose();
+        him1 = hi;
       }
     });
 
@@ -309,14 +237,17 @@ window.my = window.my || {};
     }
 
     // Check for memory leaks
-    pianoGenie.dispose();
+    decoder.dispose();
     if (tf.memory().numBytes !== numBytesBefore) {
       throw "Memory leak";
     }
+    quantizer.dispose();
 
     console.log("Passed test");
   }
 
-  my.PianoGenie = PianoGenie;
-  my.testPianoGenie = testPianoGenie;
+  my.PIANO_NUM_KEYS = PIANO_NUM_KEYS;
+  my.PianoGenieDecoder = PianoGenieDecoder;
+  my.IntegerQuantizer = IntegerQuantizer;
+  my.testPianoGenieDecoder = testPianoGenieDecoder;
 })(window.tf, window.my);
