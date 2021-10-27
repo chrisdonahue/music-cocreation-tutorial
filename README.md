@@ -2,12 +2,12 @@
 
 **NOTE:** This tutorial is in-progress but will be finalized by November 7th, 2021
 
-This tutorial is a start-to-finish demonstration ([click here for result](https://chrisdonahue.com/music-cocreation-tutorial)) of building an interactive music co-creation system in two steps:
+This tutorial is a start-to-finish demonstration ([click here for result](https://chrisdonahue.com/music-cocreation-tutorial)) of building an interactive music co-creation system in two parts:
 
 1. **Training a generative model of music in Python (via PyTorch)**
 2. **Deploying it in JavaScript (via TensorFlow.js)**
 
-This demonstration was prepared by [Chris Donahue](https://chrisdonahue.com) as part of an [ISMIR 2021 tutorial](https://ismir2021.ismir.net/tutorials/) on *Designing generative models for interactive co-creation*, co-hosted by [Anna Huang](https://research.google/people/105787/) and [Jon Gillick](https://www.jongillick.com/).
+This demonstration was prepared by [Chris Donahue](https://chrisdonahue.com) as part of an [ISMIR 2021 tutorial](https://ismir2021.ismir.net/tutorials/) on *Designing generative models for interactive co-creation*, co-organized by [Anna Huang](https://research.google/people/105787/) and [Jon Gillick](https://www.jongillick.com).
 
 The example generative model we will train and deploy is [Piano Genie](https://magenta.tensorflow.org/pianogenie) (Donahue et al. 2019). Piano Genie allows anyone to improvise on the piano by mapping performances on a miniature 8-button keyboard to realistic performances on a full 88-key piano in real time. At a low-level, it is an LSTM that operates on symbolic music data (i.e., MIDI), and is lightweight enough for real-time performance on mobile CPUs.
 
@@ -15,17 +15,9 @@ The example generative model we will train and deploy is [Piano Genie](https://m
 
 <a href="https://colab.research.google.com/drive/124pk1yehPx1y-K3hBG6-SoUSVqQ-RWnM?usp=sharing" target="_blank"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
 
-This part of the tutorial involves training the Piano Genie generative model from scratch in PyTorch. Code for doing so is in the form of a single notebook with minimal dependencies: [`part-1-py-training/Train.ipynb`](part-1-py-training/Train.ipynb), which can be run for free on GPUs via [Google Colab](https://colab.research.google.com/drive/124pk1yehPx1y-K3hBG6-SoUSVqQ-RWnM?usp=sharing). The outputs of this step are: (1) a [model checkpoint](part-2-js-interaction/pretrained), and (2) [serialized inputs and outputs for a test case](part-2-js-interaction/test/fixtures.json), which we will use to check correctness of our JavaScript port in the next part.
+This part of the tutorial involves training the Piano Genie generative model from scratch in PyTorch, which comes in the form of a self-contained [Google Colab notebook](https://colab.research.google.com/drive/124pk1yehPx1y-K3hBG6-SoUSVqQ-RWnM?usp=sharing). The instructions for this part are embedded in the Colab, and the model takes about an hour to train on Colab's free GPUs.
 
-#### Data preparation
-
-#### Defining the model in PyTorch
-
-#### Training
-
-#### Dumping parameters to TensorFlow.js format
-
-#### Creating test fixture
+The outputs of this part are: (1) a [model checkpoint](part-2-js-interaction/pretrained), and (2) [serialized inputs and outputs for a test case](part-2-js-interaction/test/fixtures.json), which we will use to check correctness of our JavaScript port in the next part.
 
 ### Part 2: Deploying in JavaScript
 
@@ -43,7 +35,7 @@ This part of the tutorial involves porting the Piano Genie decoder to TensorFlow
 
 #### Licensing info
 
-This tutorial uses the [MAESTRO dataset](https://magenta.tensorflow.org/datasets/maestro) (Hawthorne et al. 2018), which is distributed under a [CC BY-NC-SA 4.0 license](https://creativecommons.org/licenses/by-nc-sa/4.0/). Because of the ShareAlike clause, the material in this tutorial is also be distributed under that same license.
+This tutorial uses the [MAESTRO dataset](https://magenta.tensorflow.org/datasets/maestro) (Hawthorne et al. 2018), which is distributed under a [CC BY-NC-SA 4.0 license](https://creativecommons.org/licenses/by-nc-sa/4.0/). Because of the ShareAlike clause, the material in this tutorial is also distributed under that same license.
 
 #### Acknowledgements
 
@@ -56,7 +48,7 @@ If this tutorial was useful to you, please consider citing this repository.
 ```
 @software{donahue2021tutorial,
   author={Donahue, Chris and Huang, Cheng-Zhi Anna and Gillick, Jon},
-  title={Interactive music co-creation with {PyTorch} and {Tensorflow.js}},
+  title={Interactive music co-creation with {PyTorch} and {TensorFlow.js}},
   url={https://github.com/chrisdonahue/music-cocreation-tutorial},
   year={2021}
 }
