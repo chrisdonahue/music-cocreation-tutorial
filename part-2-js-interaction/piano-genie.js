@@ -40,7 +40,6 @@
       await this.dec.init();
 
       // Warm start
-      this.reset();
       this.press(0, 0);
       this.reset();
     }
@@ -50,7 +49,7 @@
         this.lastHidden.dispose();
       }
       this.lastTime = null;
-      this.lastKey = SOS;
+      this.lastKey = null;
       this.lastHidden = null;
     }
 
@@ -78,8 +77,9 @@
       }
 
       // Run model
+      const lastKey = this.lastKey === null ? SOS : this.lastKey;
       const [key, hidden] = tf.tidy(() => {
-        const kim1 = tf.tensor(this.lastKey, [1], "int32");
+        const kim1 = tf.tensor(lastKey, [1], "int32");
         let ti = tf.tensor(deltaTime, [1], "float32");
         let bi = tf.tensor(button, [1], "int32");
         bi = this.quant.discreteToReal(bi);
