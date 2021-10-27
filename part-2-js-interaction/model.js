@@ -185,8 +185,8 @@ window.my = window.my || {};
       // Run model
       const [key, h] = tf.tidy(() => {
         const [logits, h] = this.forward(
-          tf.tensor(deltaTime, [1], "float32"),
           tf.tensor(this.lastKey, [1], "int32"),
+          tf.tensor(deltaTime, [1], "float32"),
           tf.tensor(button, [1], "int32"),
           this.hidden
         );
@@ -210,7 +210,7 @@ window.my = window.my || {};
       return new LSTMHiddenState(batchSize, this.rnnNumLayers, this.rnnDim);
     }
 
-    forward(deltaTime, lastKey, button, h) {
+    forward(lastKey, deltaTime, button, h) {
       const batchSize = deltaTime.shape[0];
 
       // Encode inputs
@@ -221,8 +221,8 @@ window.my = window.my || {};
       );
       let x = tf.concat(
         [
-          tf.expandDims(deltaTime, 1),
           tf.oneHot(lastKey, PIANO_NUM_KEYS + 1),
+          tf.expandDims(deltaTime, 1),
           tf.expandDims(button, 1)
         ],
         1
@@ -290,7 +290,7 @@ window.my = window.my || {};
         const dt = tf.tensor(f["input_dts"][i], [1], "float32");
         const key = tf.tensor(f["input_keys"][i], [1], "int32");
         const button = tf.tensor(f["input_buttons"][i], [1], "float32");
-        [logits, h] = pianoGenie.forward(dt, key, button, h);
+        [logits, h] = pianoGenie.forward(key, dt, button, h);
 
         const expectedLogits = tf.tensor(
           f["output_logits"][i],
