@@ -15,7 +15,7 @@ The example generative model we will train and deploy is [Piano Genie](https://m
 
 <a href="https://colab.research.google.com/drive/124pk1yehPx1y-K3hBG6-SoUSVqQ-RWnM?usp=sharing" target="_blank"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
 
-This part of the tutorial involves training the Piano Genie generative model from scratch in PyTorch, which comes in the form of a self-contained [Google Colab notebook](https://colab.research.google.com/drive/124pk1yehPx1y-K3hBG6-SoUSVqQ-RWnM?usp=sharing). The instructions for this part are embedded in the Colab, and the model takes about an hour to train on Colab's free GPUs.
+This part of the tutorial involves training a music generative model (Piano Genie) from scratch in PyTorch, which comes in the form of a self-contained [Google Colab notebook](https://colab.research.google.com/drive/124pk1yehPx1y-K3hBG6-SoUSVqQ-RWnM?usp=sharing). The instructions for this part are embedded in the Colab, and the model takes about an hour to train on Colab's free GPUs.
 
 The outputs of this part are: (1) a [model checkpoint](part-2-js-interaction/pretrained), and (2) [serialized inputs and outputs for a test case](part-2-js-interaction/test/fixtures.json), which we will use to check correctness of our JavaScript port in the next part.
 
@@ -23,9 +23,163 @@ The outputs of this part are: (1) a [model checkpoint](part-2-js-interaction/pre
 
 <a href="https://glitch.com/edit/#!/music-cocreation-tutorial" target="_blank"><img src="https://cdn.glitch.com/2703baf2-b643-4da7-ab91-7ee2a2d00b5b%2Fremix-button.svg" alt="Remix on Glitch"/></a>
 
-This part of the tutorial involves porting the Piano Genie decoder to TensorFlow.js, and hooking the model up to a simple UI to allow users to interact with the model. The final result lives at [`part-2-js-interaction`](part-2-js-interaction), and is [hosted here](https://chrisdonahue.com/music-cocreation-tutorial).
+This part of the tutorial involves porting the trained generative model from PyTorch to TensorFlow.js, and hooking the model up to a simple UI to allow users to interact with the model. The final result lives at [`part-2-js-interaction`](part-2-js-interaction), and is [hosted here](https://chrisdonahue.com/music-cocreation-tutorial).
+
+We use JavaScript as the target language for interaction because, unlike Python, it allows for straightforward prototyping and sharing of interactive UIs. However, note that JavaScript is likely not the best target when building tools that musicians can integrate into their workflows. For this, you probably want to integrate with digital audio workstations through C++ plugin frameworks like [VSTs](https://en.wikipedia.org/wiki/Virtual_Studio_Technology) or visual programming environments like [Max/MSP](https://en.wikipedia.org/wiki/Max_(software)).
+
+At time of writing, [TensorFlow.js](https://www.tensorflow.org/js) is the most mature JavaScript framework for client-side inference of machine learning models. If your Python model is written in TensorFlow, porting it to TensorFlow.js will be much easier, or perhaps even [automatic](https://www.tensorflow.org/js/tutorials/conversion/import_saved_model). However, if you prefer to use a different Python framework like PyTorch or JAX, porting to TensorFlow.js can be a bit tricky, but not insurmountable!
+
+#### Porting weights from PyTorch to TensorFlow.js
+
+At the end of Part 1, we exported our model weights from PyTorch to a format that TensorFlow.js can recognize. For convenience, we've also included a relevant snippet here:
+
+```py
+import pathlib
+from tensorflowjs.write_weights import write_weights
+import torch
+
+# Load saved model params
+d = torch.load("model.pt", map_location=torch.device("cpu"))
+
+# Convert to simple dictionary of named numpy arrays
+d = {k: v.numpy() for k, v in d.items()}
+
+# Save in TensorFlow.js format
+pathlib.Path("output").mkdir(exist_ok=True)
+write_weights([[{"name": k, "data": v} for k, v in d.items()]], "output")
+```
+
+This will produce `output/group1-shard1of1.bin`, a binary file containing the parameters, and `output/weights_manifest.json` a JSON spec which informs TensorFlow.js how to unpack the binary file into a JavaScript `Object`. Both of these files must be hosted in the same directory when loading the weights with TensorFlow.js
 
 #### Redefining the model in TensorFlow.js
+
+Next, we will write equivalent TensorFlow.js code to reimplement our PyTorch model. This is tricky, and will likely require unit testing (I have done this several times and have yet to get it right on the first try).
+
+One tip is to try to make the APIs for the Python and JavaScript models as similar as possible. Here is the PyTorch model we are trying to port (see the Colab notebook to understand variable naming conventions in the `forward` method):
+
+```py
+class PianoGenieDecoder(nn.Module):
+    def __init__(
+        self,
+        rnn_dim=128,
+        rnn_num_layers=2,
+    ):
+        super().__init__()
+        self.rnn_dim = rnn_dim
+        self.rnn_num_layers = rnn_num_layers
+        self.input = nn.Linear(PIANO_NUM_KEYS + 3, rnn_dim)
+        self.lstm = nn.LSTM(
+            rnn_dim,
+            rnn_dim,
+            rnn_num_layers,
+            bias=True,
+            batch_first=True,
+            bidirectional=False,
+        )
+        self.output = nn.Linear(rnn_dim, 88)
+    
+    def init_hidden(self, batch_size, device=None):
+        h = torch.zeros(self.rnn_num_layers, batch_size, self.rnn_dim)
+        c = torch.zeros(self.rnn_num_layers, batch_size, self.rnn_dim)
+        if device is not None:
+            h = h.to(device)
+            c = c.to(device)
+        return (h, c)
+
+    def forward(self, k, t, b, h_0=None):
+        # Prepend <S> token to shift k_i to k_{i-1}
+        k_m1 = torch.cat([torch.full_like(k[:, :1], SOS), k[:, :-1]], dim=1)
+
+        # Encode input
+        inputs = [
+            F.one_hot(k_m1, PIANO_NUM_KEYS + 1),
+            t.unsqueeze(dim=2),
+            b.unsqueeze(dim=2),
+        ]
+        x = torch.cat(inputs, dim=2)
+
+        # Project encoded inputs
+        x = self.input(x)
+
+        # Run RNN
+        if h_0 is None:
+            h_0 = self.init_hidden(k.shape[0], device=k.device)
+        x, h_N = self.lstm(x, h_0)
+
+        # Compute logits
+        hat_k = self.output(x)
+
+        return hat_k, h_N
+```
+
+And here is the equivalent model re-writen in TensorFlow.js (from [`part-2-js-interaction/modules.js`](part-2-js-interaction/modules.js)). These models have similar APIs, but note that the PyTorch model takes as input entire sequences, i.e., tensors of shape `[batch_size, seq_len]`, while the TensorFlow.js model takes an individual timestep as input, i.e., tensors of shape `[batch_size]`. This is because in Python, we are passing as input full sequences of training data, while in JavaScript, we will be using the model in an on-demand fashion, passing in user inputs as they become available.
+
+```js
+class PianoGenieDecoder extends Module {
+  constructor(rnnDim, rnnNumLayers) {
+    super();
+    this.rnnDim = rnnDim === undefined ? 128 : rnnDim;
+    this.rnnNumLayers = rnnNumLayers === undefined ? 2 : rnnNumLayers;
+  }
+
+  initHidden(batchSize) {
+    const c = [];
+    for (let i = 0; i < this.rnnNumLayers; ++i) {
+      c.push(tf.zeros([batchSize, this.rnnDim], "float32"));
+    }
+    const h = [];
+    for (let i = 0; i < this.rnnNumLayers; ++i) {
+      h.push(tf.zeros([batchSize, this.rnnDim], "float32"));
+    }
+    return new LSTMHiddenState(c, h);
+  }
+
+  forward(kim1, ti, bi, him1) {
+    // Encode input
+    const inputs = [
+      tf.oneHot(kim1, PIANO_NUM_KEYS + 1),
+      tf.expandDims(ti, 1),
+      tf.expandDims(bi, 1)
+    ];
+    let x = tf.concat(inputs, 1);
+
+    // Project encoded inputs
+    x = tf.add(
+      tf.matMul(x, this._params["dec.input.weight"], false, true),
+      this._params[`dec.input.bias`]
+    );
+
+    // Create RNN cell function closures
+    const cells = [];
+    for (let l = 0; l < this.rnnNumLayers; ++l) {
+      cells.push(
+        pyTorchLSTMCellFactory(
+          this._params[`dec.lstm.weight_ih_l${l}`],
+          this._params[`dec.lstm.weight_hh_l${l}`],
+          this._params[`dec.lstm.bias_ih_l${l}`],
+          this._params[`dec.lstm.bias_hh_l${l}`]
+        )
+      );
+    }
+
+    // Run RNN
+    if (him1 === undefined || him1 === null) {
+      him1 = this.initHidden(kim1.shape[0]);
+    }
+    const [hic, hih] = tf.multiRNNCell(cells, x, him1.c, him1.h);
+    x = hih[this.rnnNumLayers - 1];
+    const hi = new LSTMHiddenState(hic, hih);
+
+    // Compute logits
+    const hatki = tf.add(
+      tf.matMul(x, this._params["dec.output.weight"], false, true),
+      this._params[`dec.output.bias`]
+    );
+
+    return [hatki, hi];
+  }
+}
+```
 
 #### Testing for correctness
 
