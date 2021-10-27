@@ -1,6 +1,30 @@
 window.my = window.my || {};
 
 (function(tf, my) {
+  class Module {
+    constructor() {
+      this._params = null;
+    }
+
+    async init(paramsDir) {
+      // Load parameters
+      this.dispose();
+      const manifest = await fetch(`${paramsDir}/weights_manifest.json`);
+      const manifestJson = await manifest.json();
+      this._params = await tf.io.loadWeights(manifestJson, paramsDir);
+    }
+
+    dispose() {
+      // Dispose of parameters
+      if (this._params !== null) {
+        for (const n in this._params) {
+          this._params[n].dispose();
+        }
+        this._params = null;
+      }
+    }
+  }
+
   class LSTMHiddenState {
     constructor(batchSize, numLayers, dim, c, h) {
       this.batchSize = batchSize;
@@ -84,28 +108,6 @@ window.my = window.my || {};
     };
   }
 
-  class Module {
-    constructor() {
-      this._params = null;
-    }
-
-    async init(paramsDir) {
-      this.dispose();
-      const manifest = await fetch(`${paramsDir}/weights_manifest.json`);
-      const manifestJson = await manifest.json();
-      this._params = await tf.io.loadWeights(manifestJson, paramsDir);
-    }
-
-    dispose() {
-      if (this._params !== null) {
-        for (const n in this._params) {
-          this._params[n].dispose();
-        }
-        this._params = null;
-      }
-    }
-  }
-
   const DEFAULT_CKPT_DIR =
     "https://chrisdonahue.com/music-cocreation-tutorial/pretrained";
   const PIANO_NUM_KEYS = 88;
@@ -128,6 +130,7 @@ window.my = window.my || {};
     }
 
     forward(kim1, ti, bi, him1) {
+      // NOTE: JavaScript API takes in one timestep per call, i.e., [B] rather than [B, S] as in Python
       const batchSize = kim1.shape[0];
 
       // Encode input
@@ -144,7 +147,7 @@ window.my = window.my || {};
         this._params[`dec.input.bias`]
       );
 
-      // Create RNN cell functions
+      // Create RNN cell function closures
       const cells = [];
       for (let l = 0; l < this.rnnNumLayers; ++l) {
         cells.push(
