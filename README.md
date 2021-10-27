@@ -21,7 +21,7 @@ This part of the tutorial involves training a music generative model (Piano Geni
 
 <a href="https://glitch.com/edit/#!/music-cocreation-tutorial" target="_blank"><img src="https://cdn.glitch.com/2703baf2-b643-4da7-ab91-7ee2a2d00b5b%2Fremix-button.svg" alt="Remix on Glitch"/></a>
 
-This part of the tutorial involves porting the trained generative model from PyTorch to TensorFlow.js, and hooking the model up to a simple UI to allow users to interact with the model. The final result lives at [`part-2-js-interaction`](part-2-js-interaction), and is [hosted here](https://chrisdonahue.com/music-cocreation-tutorial).
+This part of the tutorial involves porting the trained generative model from PyTorch to TensorFlow.js, and hooking the model up to a simple UI to allow users to interact with the model. The final result is this [simple web demo](https://chrisdonahue.com/music-cocreation-tutorial). The static files for this demo are located in the [`part-2-js-interaction`](part-2-js-interaction) directory.
 
 We use JavaScript as the target language for interaction because, unlike Python, it allows for straightforward prototyping and sharing of interactive UIs. However, note that JavaScript is likely not the best target when building tools that musicians can integrate into their workflows. For this, you probably want to integrate with digital audio workstations through C++ plugin frameworks like [VSTs](https://en.wikipedia.org/wiki/Virtual_Studio_Technology) or visual programming environments like [Max/MSP](https://en.wikipedia.org/wiki/Max_(software)).
 
@@ -29,7 +29,7 @@ At time of writing, [TensorFlow.js](https://www.tensorflow.org/js) is the most m
 
 #### Porting weights from PyTorch to TensorFlow.js
 
-At the end of Part 1, we exported our model weights from PyTorch to a format that TensorFlow.js can recognize. For convenience, we've also included a relevant snippet here:
+At the end of Part 1, we exported our model parameters from PyTorch to a format that TensorFlow.js can recognize. For convenience, we've also included the relevant snippet here:
 
 ```py
 import pathlib
@@ -47,11 +47,11 @@ pathlib.Path("output").mkdir(exist_ok=True)
 write_weights([[{"name": k, "data": v} for k, v in d.items()]], "output")
 ```
 
-This will produce `output/group1-shard1of1.bin`, a binary file containing the parameters, and `output/weights_manifest.json` a JSON spec which informs TensorFlow.js how to unpack the binary file into a JavaScript `Object`. Both of these files must be hosted in the same directory when loading the weights with TensorFlow.js
+This snippet will produce `output/group1-shard1of1.bin`, a binary file containing the model parameters, and `output/weights_manifest.json` a JSON spec which informs TensorFlow.js how to unpack the binary file into a JavaScript `Object`. Both of these files must be hosted in the same directory when loading the weights with TensorFlow.js
 
 #### Redefining the model in TensorFlow.js
 
-Next, we will write equivalent TensorFlow.js code to reimplement our PyTorch model. This is tricky, and will likely require unit testing (I have done this several times and have yet to get it right on the first try).
+Next, we will write equivalent TensorFlow.js code to reimplement our PyTorch model. This is tricky, and will likely require unit testing (I have ported several models from Python to JavaScript and have yet to get it right on the first try).
 
 One tip is to try to make the APIs for the Python and JavaScript models as similar as possible. Here is a side-by-side comparison between the reference PyTorch model (from the [Colab notebook](part-1-py-training/Train.colab.ipynb)) and the TensorFlow.js equivalent (from [`part-2-js-interaction/modules.js`](part2-js-interaction/modules.js)):
 
@@ -200,7 +200,7 @@ Note that this implementation makes use of several helpers, such as a `Module` c
 
 #### Testing for correctness
 
-Now that we have our model redefined in JavaScript, it is critical that we test it to ensure the behavior is identical to that of the original Python version. The easiest way to do this is to serialize a batch of inputs to and outputs from your Python model as JSON. Then, you can run those inputs through your JavaScript model and check if the outputs are identical (modulo some inevitable numerical error). Such a test case might look like this (from [`part-2-js-interaction/modules.js`](part-2-js-interaction/modules.js)):
+Now that we have our model redefined in JavaScript, it is critical that we test it to ensure the behavior is identical to that of the original Python version. The easiest way to do this is to serialize a batch of inputs to and outputs from your Python model as JSON. Then, you can run those inputs through your JavaScript model and check if the outputs are identical (modulo some inevitable numerical precision error). Such a test case might look like this (from [`part-2-js-interaction/modules.js`](part-2-js-interaction/modules.js)):
 
 ```js
 async function testPianoGenieDecoder() {
@@ -262,7 +262,7 @@ Note that this function makes use of the [`tf.tidy`](https://js.tensorflow.org/a
 
 Now that we have ported and tested our model, we can finally have some fun and start building out the interactive elements! Our demo includes a [simple HTML UI](part-2-js-interaction/index.html) with 8 buttons, and a [script](part-2-js-interaction/script.js) which hooks the frontend up to the model. Our script makes use of the wonderful [Tone.js](https://tonejs.github.io/) library to quickly build out a polyphonic FM synthesizer. We also [build a higher-level API](part-2-js-interaction/piano-genie.js) around our low-level model port, to handle things like keeping track of state and sampling from a model's distribution. 
 
-While this is the stopping point of the tutorial, I would encourage you to experiment further. You're now at the point where the benefits of porting the model to JavaScript are clear: JavaScript makes it fairly straightforward to add additional functionality to enrich the interaction. For example, you could add an piano keyboard display to visualize Piano Genie's outputs, or bind the space bar to act as a sustain pedal to Piano Genie, or you could use the WebMIDI API to output notes to a hardware synthesizer (hint: all of this functionality is built into [Monica Dinculescu's](https://meowni.ca/) official [Piano Genie demo](https://www.w3.org/TR/webmidi/)). The possibilities are endless!
+While this is the stopping point of the tutorial, I would encourage you to experiment further. You're now at the point where the benefits of porting the model to JavaScript are clear: JavaScript makes it fairly straightforward to add additional functionality to enrich the interaction. For example, you could add an piano keyboard display to visualize Piano Genie's outputs, bind the space bar to act as a sustain pedal to Piano Genie, or you could use the WebMIDI API to output notes to a hardware synthesizer (hint: all of this functionality is built into [Monica Dinculescu](https://meowni.ca/)'s official [Piano Genie demo](https://www.w3.org/TR/webmidi/)). The possibilities are endless!
 
 ### End matter
 
