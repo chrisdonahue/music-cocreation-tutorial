@@ -4,12 +4,14 @@
 
 This tutorial is a start-to-finish demonstration ([click here for result](https://chrisdonahue.com/music-cocreation-tutorial)) of building an interactive music co-creation system in two parts:
 
-1. **Training a generative model of music in Python (via PyTorch)**
-2. **Deploying it in JavaScript (via TensorFlow.js)**
+1. **[Training a generative model of music in Python](#part-1-training-in-python)** (via PyTorch)
+2. **[Deploying it in JavaScript for interaction](#part-2-deploying-in-javascript)** (via TensorFlow.js)
 
 This demonstration was prepared by [Chris Donahue](https://chrisdonahue.com) as part of an [ISMIR 2021 tutorial](https://ismir2021.ismir.net/tutorials/) on *Designing generative models for interactive co-creation*, co-organized by [Anna Huang](https://research.google/people/105787/) and [Jon Gillick](https://www.jongillick.com).
 
-The example generative model we will train and deploy is [Piano Genie](https://magenta.tensorflow.org/pianogenie) (Donahue et al. 2019). Piano Genie allows anyone to improvise on the piano by mapping performances on a miniature 8-button keyboard to realistic performances on a full 88-key piano in real time. At a low-level, it is an LSTM that operates on symbolic music data (i.e., MIDI), and is lightweight enough for real-time performance on mobile CPUs.
+The example generative model we will train and deploy is [Piano Genie](https://magenta.tensorflow.org/pianogenie) (Donahue et al. 2019). Piano Genie allows anyone to improvise on the piano by mapping performances on a miniature 8-button keyboard to realistic performances on a full 88-key piano in real time. We train Piano Genie by autoencoding expert piano performances: an encoder maps 88-key piano performances into 8-button "button performances", and a decoder attempts to reconstruct the piano performance from the button performance. At interaction time, we replace the encoder with a user performing on the buttons. At a low-level, the decoder is an LSTM that operates on symbolic music data (i.e., MIDI), and is lightweight enough for real-time performance on mobile CPUs.
+
+<p align="center"><img src="part-1-py-training/figures/overview.png" width=600px/></p>
 
 ### Part 1: Training in Python
 
