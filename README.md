@@ -69,11 +69,7 @@ One tip is to try to make the APIs for the Python and JavaScript models as simil
 
 ```py
 class PianoGenieDecoder(nn.Module):
-    def __init__(
-        self,
-        rnn_dim=128,
-        rnn_num_layers=2,
-    ):
+    def __init__(self, rnn_dim=128, rnn_num_layers=2):
         super().__init__()
         self.rnn_dim = rnn_dim
         self.rnn_num_layers = rnn_num_layers
@@ -82,18 +78,14 @@ class PianoGenieDecoder(nn.Module):
             rnn_dim,
             rnn_dim,
             rnn_num_layers,
-            bias=True,
             batch_first=True,
             bidirectional=False,
         )
         self.output = nn.Linear(rnn_dim, 88)
     
     def init_hidden(self, batch_size, device=None):
-        h = torch.zeros(self.rnn_num_layers, batch_size, self.rnn_dim)
-        c = torch.zeros(self.rnn_num_layers, batch_size, self.rnn_dim)
-        if device is not None:
-            h = h.to(device)
-            c = c.to(device)
+        h = torch.zeros(self.rnn_num_layers, batch_size, self.rnn_dim, device=device)
+        c = torch.zeros(self.rnn_num_layers, batch_size, self.rnn_dim, device=device)
         return (h, c)
 
     def forward(self, k, t, b, h_0=None):
@@ -135,11 +127,9 @@ class PianoGenieDecoder extends Module {
 
   initHidden(batchSize) {
     const c = [];
-    for (let i = 0; i < this.rnnNumLayers; ++i) {
-      c.push(tf.zeros([batchSize, this.rnnDim], "float32"));
-    }
     const h = [];
     for (let i = 0; i < this.rnnNumLayers; ++i) {
+      c.push(tf.zeros([batchSize, this.rnnDim], "float32"));
       h.push(tf.zeros([batchSize, this.rnnDim], "float32"));
     }
     return new LSTMHiddenState(c, h);

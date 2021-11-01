@@ -110,11 +110,9 @@ window.my = window.my || {};
     initHidden(batchSize) {
       // NOTE: This allocates memory that must later be freed
       const c = [];
-      for (let i = 0; i < this.rnnNumLayers; ++i) {
-        c.push(tf.zeros([batchSize, this.rnnDim], "float32"));
-      }
       const h = [];
       for (let i = 0; i < this.rnnNumLayers; ++i) {
+        c.push(tf.zeros([batchSize, this.rnnDim], "float32"));
         h.push(tf.zeros([batchSize, this.rnnDim], "float32"));
       }
       return new LSTMHiddenState(c, h);
