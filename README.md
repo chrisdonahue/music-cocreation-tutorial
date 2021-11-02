@@ -115,10 +115,7 @@ class PianoGenieDecoder(nn.Module):
         c = torch.zeros(self.rnn_num_layers, batch_size, self.rnn_dim, device=device)
         return (h, c)
 
-    def forward(self, k, t, b, h_0=None):
-        # Prepend <S> token to shift k_i to k_{i-1}
-        k_m1 = torch.cat([torch.full_like(k[:, :1], SOS), k[:, :-1]], dim=1)
-
+    def forward(self, k_m1, t, b, h_0=None):
         # Encode input
         inputs = [
             F.one_hot(k_m1, PIANO_NUM_KEYS + 1),
@@ -164,8 +161,6 @@ class PianoGenieDecoder extends Module {
   }
 
   forward(kim1, ti, bi, him1) {
-    // NOTE: JavaScript API takes in one timestep per call, i.e., [B] rather than [B, S] as in Python
-
     // Encode input
     const inputs = [
       tf.oneHot(kim1, PIANO_NUM_KEYS + 1),
