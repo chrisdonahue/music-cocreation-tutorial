@@ -153,6 +153,7 @@ class PianoGenieDecoder extends Module {
   }
 
   initHidden(batchSize) {
+    // NOTE: This allocates memory that must later be freed
     const c = [];
     const h = [];
     for (let i = 0; i < this.rnnNumLayers; ++i) {
@@ -163,6 +164,8 @@ class PianoGenieDecoder extends Module {
   }
 
   forward(kim1, ti, bi, him1) {
+    // NOTE: JavaScript API takes in one timestep per call, i.e., [B] rather than [B, S] as in Python
+
     // Encode input
     const inputs = [
       tf.oneHot(kim1, PIANO_NUM_KEYS + 1),
@@ -177,24 +180,11 @@ class PianoGenieDecoder extends Module {
       this._params[`dec.input.bias`]
     );
 
-    // Create RNN cell function closures
-    const cells = [];
-    for (let l = 0; l < this.rnnNumLayers; ++l) {
-      cells.push(
-        pyTorchLSTMCellFactory(
-          this._params[`dec.lstm.weight_ih_l${l}`],
-          this._params[`dec.lstm.weight_hh_l${l}`],
-          this._params[`dec.lstm.bias_ih_l${l}`],
-          this._params[`dec.lstm.bias_hh_l${l}`]
-        )
-      );
-    }
-
     // Run RNN
     if (him1 === undefined || him1 === null) {
       him1 = this.initHidden(kim1.shape[0]);
     }
-    const [hic, hih] = tf.multiRNNCell(cells, x, him1.c, him1.h);
+    const [hic, hih] = tf.multiRNNCell(this._cells, x, him1.c, him1.h);
     x = hih[this.rnnNumLayers - 1];
     const hi = new LSTMHiddenState(hic, hih);
 
@@ -215,7 +205,7 @@ class PianoGenieDecoder extends Module {
 
 While these models have similar APIs, note that the PyTorch model takes as input entire sequences, i.e., tensors of shape `[batch_size, seq_len]`, while the TensorFlow.js equivalent takes an individual timestep as input, i.e., tensors of shape `[batch_size]`. This is because in Python, we are passing as input full sequences of training data, while in JavaScript, we will be using the model in an on-demand fashion, passing in user inputs as they become available.
 
-Note that this implementation makes use of several helpers, such as a `Module` class which mocks behavior in `torch.nn.Module`, and a factory method `pyTorchLSTMCellFactory` which handles subtle differences in the LSTM implementations between PyTorch and TensorFlow.js. See [`part-2-js-interaction/modules.js`](part-2-js-interaction/modules.js) for more details.
+Note that this implementation makes use of several helpers, such as a `Module` class which mocks behavior in `torch.nn.Module`, and a factory method `pyTorchLSTMCellFactory` which handles subtle differences in the LSTM implementations between PyTorch and TensorFlow.js. See [`part-2-js-interaction/modules.js`](part-2-js-interaction/modules.js) for full implementation.
 
 #### Testing for correctness
 
