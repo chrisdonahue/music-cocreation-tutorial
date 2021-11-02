@@ -17,7 +17,7 @@ The example generative model we will train and deploy is [Piano Genie](https://m
 
 <a href="https://colab.research.google.com/drive/124pk1yehPx1y-K3hBG6-SoUSVqQ-RWnM?usp=sharing" target="_blank"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
 
-This part of the tutorial involves training a music generative model (Piano Genie) from scratch in PyTorch, which comes in the form of a self-contained [Google Colab notebook](https://colab.research.google.com/drive/124pk1yehPx1y-K3hBG6-SoUSVqQ-RWnM?usp=sharing). The instructions for this part are embedded in the Colab, and the model takes about an hour to train on Colab's free GPUs. The outputs of this part are: (1) a [model checkpoint](part-2-js-interaction/pretrained), and (2) [serialized inputs and outputs for a test case](part-2-js-interaction/test/fixtures.json), which we will use to check correctness of our JavaScript port in the next part.
+This part of the tutorial involves training a music generative model (Piano Genie) from scratch in PyTorch, which comes in the form of a self-contained [Google Colab notebook](https://colab.research.google.com/drive/124pk1yehPx1y-K3hBG6-SoUSVqQ-RWnM?usp=sharing). The instructions for this part are embedded in the Colab, and the model takes about an hour to train on Colab's free GPUs. The outputs of this part are: (1) a [model checkpoint](part-2-js-interaction/pretrained), and (2) [serialized inputs and outputs for a test case](part-2-js-interaction/test/test.json), which we will use to check correctness of our JavaScript port in the next part.
 
 ### Part 2: Deploying in JavaScript
 
@@ -76,11 +76,11 @@ with torch.no_grad():
         f.write(json.dumps(test))
 ```
 
-This snippet will produce `test.json`, a JSON-encoded file containing serialized inputs and outputs for our model. We will use this later to check our ported model for correctness.
+This snippet will produce `test.json`, a JSON-encoded file containing serialized inputs and outputs for our model. We can use this later to check our ported model for correctness.
 
 #### Redefining the model in TensorFlow.js
 
-Next, we will write equivalent TensorFlow.js code to reimplement our PyTorch model. This is tricky, and will likely require unit testing (I have ported several models from Python to JavaScript and have yet to get it right on the first try).
+Next, we will write equivalent TensorFlow.js code to reimplement our PyTorch model. This is tricky, and will likely require unit testing (I have ported several models from Python to JavaScript and have yet to get it right on the first try) as well as a lot of poking around in the [documentation](https://js.tensorflow.org/api/latest/).
 
 One tip is to try to make the APIs for the Python and JavaScript models as similar as possible. Here is a side-by-side comparison between the reference PyTorch model (from the [Colab notebook](part-1-py-training/Train.colab.ipynb)) and the TensorFlow.js equivalent (from [`part-2-js-interaction/modules.js`](part2-js-interaction/modules.js)):
 
