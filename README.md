@@ -31,7 +31,7 @@ At time of writing, [TensorFlow.js](https://www.tensorflow.org/js) is the most m
 
 #### Porting weights from PyTorch to TensorFlow.js
 
-At the end of Part 1, we exported our model parameters from PyTorch to a format that TensorFlow.js can recognize. For convenience, we've also included the relevant snippet here:
+At the end of Part 1, we exported our model parameters from PyTorch to a format that TensorFlow.js can recognize. For convenience, we've also included a relevant snippet here:
 
 ```py
 import pathlib
@@ -50,6 +50,33 @@ write_weights([[{"name": k, "data": v} for k, v in d.items()]], "output")
 ```
 
 This snippet will produce `output/group1-shard1of1.bin`, a binary file containing the model parameters, and `output/weights_manifest.json` a JSON spec which informs TensorFlow.js how to unpack the binary file into a JavaScript `Object`. Both of these files must be hosted in the same directory when loading the weights with TensorFlow.js
+
+#### Creating a test case
+
+At the end of Part 1, we also created a test case—a pair of raw inputs to and outputs from our trained model. For convenience, we've also included a relevant snippet here:
+
+```py
+import json
+import torch
+
+# Restore model from saved checkpoint
+model = Model()
+model.load_state_dict(torch.load("model.pt", map_location=device))
+model.eval()
+
+# Serialize a batch of inputs/outputs as JSON
+with torch.no_grad():
+    inputs = get_batch()
+    outputs = model(inputs)
+    test = {
+        "inputs": inputs.cpu().numpy().tolist(),
+        "outputs": outputs.cpu().numpy().tolist(),
+    }
+    with open("test.json", "w") as f:
+        f.write(json.dumps(test))
+```
+
+This snippet will produce `test.json`, a JSON-encoded file containing serialized inputs and outputs for our model. We will use this later to check our ported model for correctness.
 
 #### Redefining the model in TensorFlow.js
 
