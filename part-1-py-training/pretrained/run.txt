@@ -1,1 +1,2 @@
-https://wandb.ai/cdonahue/music-cocreation-tutorial/runs/vkm9t7h6?workspace=user-cdonahue
+Equivalent w/ updated training curves: https://wandb.ai/cdonahue/music-cocreation-tutorial/runs/23m56lvb?workspace=user-cdonahue
+Actual: https://wandb.ai/cdonahue/music-cocreation-tutorial/runs/vkm9t7h6?workspace=user-cdonahue
