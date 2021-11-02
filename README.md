@@ -203,22 +203,22 @@ async function testPianoGenieDecoder() {
   const decoder = new PianoGenieDecoder();
   await decoder.init();
 
-  // Fetch test fixtures
-  const f = await fetch(TEST_FIXTURES_URI).then(r => r.json());
+  // Fetch test case
+  const t = await fetch(TEST_CASE_URI).then(r => r.json());
 
   // Run test
   let totalErr = 0;
   let him1 = null;
   for (let i = 0; i < 128; ++i) {
     him1 = tf.tidy(() => {
-      const kim1 = tf.tensor(f["input_keys"][i], [1], "int32");
-      const ti = tf.tensor(f["input_dts"][i], [1], "float32");
-      let bi = tf.tensor(f["input_buttons"][i], [1], "float32");
+      const kim1 = tf.tensor(t["input_keys"][i], [1], "int32");
+      const ti = tf.tensor(t["input_dts"][i], [1], "float32");
+      let bi = tf.tensor(t["input_buttons"][i], [1], "float32");
       bi = quantizer.discreteToReal(bi);
       const [khati, hi] = decoder.forward(kim1, ti, bi, him1);
 
       const expectedLogits = tf.tensor(
-        f["output_logits"][i],
+        t["output_logits"][i],
         [1, 88],
         "float32"
       );
@@ -230,7 +230,7 @@ async function testPianoGenieDecoder() {
     });
   }
 
-  // Check equivalence to fixtures
+  // Check equivalence to expected outputs
   if (isNaN(totalErr) || totalErr > 0.015) {
     console.log(totalErr);
     throw "Failed test";
