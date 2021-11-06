@@ -53,20 +53,20 @@ window.my = window.my || {};
     // https://github.com/tensorflow/tfjs/blob/31fd388daab4b21c96b2cb73c098456e88790321/tfjs-core/src/ops/basic_lstm_cell.ts#L47-L78
     // https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html?highlight=lstm#torch.nn.LSTM
 
-    // Pack kernel
-    const kernel = tf.transpose(
-      tf.concat([kernelInputHidden, kernelHiddenHidden], 1)
-    );
-
-    // Pack bias
-    // NOTE: Not sure why PyTorch breaks bias into two terms...
-    const bias = tf.add(biasInputHidden, biasHiddenHidden);
-
-    // Create empty forgetBias
-    const forgetBias = tf.scalar(0, "float32");
-
     return (data, c, h) => {
       // NOTE: Modified from Tensorflow.JS basicLSTMCell (see first reference)
+
+      // Create empty forgetBias
+      const forgetBias = tf.scalar(0, "float32");
+
+      // Pack kernel
+      const kernel = tf.transpose(
+        tf.concat([kernelInputHidden, kernelHiddenHidden], 1)
+      );
+
+      // Pack bias
+      // NOTE: Not sure why PyTorch breaks bias into two terms...
+      const bias = tf.add(biasInputHidden, biasHiddenHidden);
 
       const combined = tf.concat([data, h], 1);
       const weighted = tf.matMul(combined, kernel);
@@ -101,20 +101,32 @@ window.my = window.my || {};
       super();
       this.rnnDim = rnnDim === undefined ? 128 : rnnDim;
       this.rnnNumLayers = rnnNumLayers === undefined ? 2 : rnnNumLayers;
+      this._cells = null;
     }
 
     async init(paramsDir) {
       await super.init(paramsDir === undefined ? DEFAULT_CKPT_DIR : paramsDir);
+
+      // Create RNN cell function closures
+      this._cells = [];
+      for (let l = 0; l < this.rnnNumLayers; ++l) {
+        this._cells.push(
+          pyTorchLSTMCellFactory(
+            this._params[`dec.lstm.weight_ih_l${l}`],
+            this._params[`dec.lstm.weight_hh_l${l}`],
+            this._params[`dec.lstm.bias_ih_l${l}`],
+            this._params[`dec.lstm.bias_hh_l${l}`]
+          )
+        );
+      }
     }
 
     initHidden(batchSize) {
       // NOTE: This allocates memory that must later be freed
       const c = [];
-      for (let i = 0; i < this.rnnNumLayers; ++i) {
-        c.push(tf.zeros([batchSize, this.rnnDim], "float32"));
-      }
       const h = [];
       for (let i = 0; i < this.rnnNumLayers; ++i) {
+        c.push(tf.zeros([batchSize, this.rnnDim], "float32"));
         h.push(tf.zeros([batchSize, this.rnnDim], "float32"));
       }
       return new LSTMHiddenState(c, h);
@@ -137,24 +149,11 @@ window.my = window.my || {};
         this._params[`dec.input.bias`]
       );
 
-      // Create RNN cell function closures
-      const cells = [];
-      for (let l = 0; l < this.rnnNumLayers; ++l) {
-        cells.push(
-          pyTorchLSTMCellFactory(
-            this._params[`dec.lstm.weight_ih_l${l}`],
-            this._params[`dec.lstm.weight_hh_l${l}`],
-            this._params[`dec.lstm.bias_ih_l${l}`],
-            this._params[`dec.lstm.bias_hh_l${l}`]
-          )
-        );
-      }
-
       // Run RNN
       if (him1 === undefined || him1 === null) {
         him1 = this.initHidden(kim1.shape[0]);
       }
-      const [hic, hih] = tf.multiRNNCell(cells, x, him1.c, him1.h);
+      const [hic, hih] = tf.multiRNNCell(this._cells, x, him1.c, him1.h);
       x = hih[this.rnnNumLayers - 1];
       const hi = new LSTMHiddenState(hic, hih);
 
@@ -184,8 +183,8 @@ window.my = window.my || {};
     }
   }
 
-  const TEST_FIXTURES_URI =
-    "https://chrisdonahue.com/music-cocreation-tutorial/test/fixtures.json";
+  const TEST_CASE_URI =
+    "https://chrisdonahue.com/music-cocreation-tutorial/test/test.json";
 
   async function testPianoGenieDecoder() {
     const numBytesBefore = tf.memory().numBytes;
@@ -195,22 +194,22 @@ window.my = window.my || {};
     const decoder = new PianoGenieDecoder();
     await decoder.init();
 
-    // Fetch test fixtures
-    const f = await fetch(TEST_FIXTURES_URI).then(r => r.json());
+    // Fetch test case
+    const t = await fetch(TEST_CASE_URI).then(r => r.json());
 
     // Run test
     let totalErr = 0;
     let him1 = null;
     for (let i = 0; i < 128; ++i) {
       him1 = tf.tidy(() => {
-        const kim1 = tf.tensor(f["input_keys"][i], [1], "int32");
-        const ti = tf.tensor(f["input_dts"][i], [1], "float32");
-        let bi = tf.tensor(f["input_buttons"][i], [1], "float32");
+        const kim1 = tf.tensor(t["input_keys"][i], [1], "int32");
+        const ti = tf.tensor(t["input_dts"][i], [1], "float32");
+        let bi = tf.tensor(t["input_buttons"][i], [1], "float32");
         bi = quantizer.discreteToReal(bi);
         const [khati, hi] = decoder.forward(kim1, ti, bi, him1);
 
         const expectedLogits = tf.tensor(
-          f["output_logits"][i],
+          t["output_logits"][i],
           [1, 88],
           "float32"
         );
@@ -222,7 +221,7 @@ window.my = window.my || {};
       });
     }
 
-    // Check equivalence to fixtures
+    // Check equivalence to expected outputs
     if (isNaN(totalErr) || totalErr > 0.015) {
       console.log(totalErr);
       throw "Failed test";
