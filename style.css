@@ -25,6 +25,10 @@ body {
   color: #FFFFFF;
 }
 
+a {
+  color: #CDF352;
+}
+
 .wrapper {
   min-height: 100vh;
   display: grid;
