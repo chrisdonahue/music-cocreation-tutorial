@@ -53,20 +53,20 @@ window.my = window.my || {};
     // https://github.com/tensorflow/tfjs/blob/31fd388daab4b21c96b2cb73c098456e88790321/tfjs-core/src/ops/basic_lstm_cell.ts#L47-L78
     // https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html?highlight=lstm#torch.nn.LSTM
 
-    // Pack kernel
-    const kernel = tf.transpose(
-      tf.concat([kernelInputHidden, kernelHiddenHidden], 1)
-    );
-
-    // Pack bias
-    // NOTE: Not sure why PyTorch breaks bias into two terms...
-    const bias = tf.add(biasInputHidden, biasHiddenHidden);
-
-    // Create empty forgetBias
-    const forgetBias = tf.scalar(0, "float32");
-
     return (data, c, h) => {
       // NOTE: Modified from Tensorflow.JS basicLSTMCell (see first reference)
+
+      // Create empty forgetBias
+      const forgetBias = tf.scalar(0, "float32");
+
+      // Pack kernel
+      const kernel = tf.transpose(
+        tf.concat([kernelInputHidden, kernelHiddenHidden], 1)
+      );
+
+      // Pack bias
+      // NOTE: Not sure why PyTorch breaks bias into two terms...
+      const bias = tf.add(biasInputHidden, biasHiddenHidden);
 
       const combined = tf.concat([data, h], 1);
       const weighted = tf.matMul(combined, kernel);
@@ -101,10 +101,24 @@ window.my = window.my || {};
       super();
       this.rnnDim = rnnDim === undefined ? 128 : rnnDim;
       this.rnnNumLayers = rnnNumLayers === undefined ? 2 : rnnNumLayers;
+      this._cells = null;
     }
 
     async init(paramsDir) {
       await super.init(paramsDir === undefined ? DEFAULT_CKPT_DIR : paramsDir);
+
+      // Create RNN cell function closures
+      this._cells = [];
+      for (let l = 0; l < this.rnnNumLayers; ++l) {
+        this._cells.push(
+          pyTorchLSTMCellFactory(
+            this._params[`dec.lstm.weight_ih_l${l}`],
+            this._params[`dec.lstm.weight_hh_l${l}`],
+            this._params[`dec.lstm.bias_ih_l${l}`],
+            this._params[`dec.lstm.bias_hh_l${l}`]
+          )
+        );
+      }
     }
 
     initHidden(batchSize) {
@@ -135,24 +149,11 @@ window.my = window.my || {};
         this._params[`dec.input.bias`]
       );
 
-      // Create RNN cell function closures
-      const cells = [];
-      for (let l = 0; l < this.rnnNumLayers; ++l) {
-        cells.push(
-          pyTorchLSTMCellFactory(
-            this._params[`dec.lstm.weight_ih_l${l}`],
-            this._params[`dec.lstm.weight_hh_l${l}`],
-            this._params[`dec.lstm.bias_ih_l${l}`],
-            this._params[`dec.lstm.bias_hh_l${l}`]
-          )
-        );
-      }
-
       // Run RNN
       if (him1 === undefined || him1 === null) {
         him1 = this.initHidden(kim1.shape[0]);
       }
-      const [hic, hih] = tf.multiRNNCell(cells, x, him1.c, him1.h);
+      const [hic, hih] = tf.multiRNNCell(this._cells, x, him1.c, him1.h);
       x = hih[this.rnnNumLayers - 1];
       const hi = new LSTMHiddenState(hic, hih);
 
